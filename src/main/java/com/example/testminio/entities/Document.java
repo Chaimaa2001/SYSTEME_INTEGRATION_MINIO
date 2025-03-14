@@ -1,5 +1,6 @@
 package com.example.testminio.entities;
 
+import com.example.testminio.converter.JsonConverter;
 import com.example.testminio.interfacedemarquage.FileModel;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,8 +25,9 @@ public abstract class Document {
     private String name;
     private MediaType mimetype;
     private String extension;
-    @Embedded
-    private FileModel fileModel;
+    @Column(columnDefinition = "json") // Spécifie que la colonne est de type JSON
+    @Convert(converter = JsonConverter.class)
+    private Object details;
 
     public abstract FileModel getFileModel();
 

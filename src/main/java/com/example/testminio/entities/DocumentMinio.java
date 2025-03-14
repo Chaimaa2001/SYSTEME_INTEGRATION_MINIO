@@ -5,22 +5,32 @@ import com.example.testminio.interfacedemarquage.FileModelMinIO;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 
 @Entity
 @DiscriminatorValue("DocumentMinio")
 @JsonTypeName("DocumentMinio")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class DocumentMinio extends Document{
+public class DocumentMinio extends Document {
 
-    private String bucket_name;
-    private String minio_name;
     @Override
     public FileModel getFileModel() {
-        return new FileModelMinIO(super.getName(),super.getMimetype(),super.getExtension());
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode detailsNode = mapper.readTree(mapper.writeValueAsString(super.getDetails()));
+            String bucketName = detailsNode.get("bucket_name").asText();
+            String minioName = detailsNode.get("minio_name").asText();
+
+            return new FileModelMinIO(super.getName(), super.getMimetype(), super.getExtension());
+        } catch (IOException e) {
+            // Handle exception appropriately (e.g., log, throw a custom exception)
+            e.printStackTrace();
+            return null; // Or throw an exception
+        }
     }
 }
