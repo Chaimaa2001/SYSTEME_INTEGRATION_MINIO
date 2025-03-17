@@ -3,8 +3,6 @@ package com.example.testminio.service;
 import com.example.testminio.entities.Document;
 import com.example.testminio.entities.DocumentFile;
 import com.example.testminio.entities.DocumentMinio;
-import com.example.testminio.interfacedemarquage.FileModelAncienneVersion;
-import com.example.testminio.interfacedemarquage.FileModelMinIO;
 import com.example.testminio.repository.DocumentRepository;
 import net.kaine.exception.FileNotFoundException;
 import net.kaine.exception.FileUploadException;
@@ -32,15 +30,17 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final FileUploadService fileUploadService;
-    private final ObjectMapper objectMapper;
+    private  static  String minioS="minio_name";
+    private static String bucketS="bucket_name";
+
 
     private static final String LOCAL_STORAGE_DIRECTORY = "C:\\Users\\CHAIMAA\\Desktop\\STAGE PFE\\asiaphotos2";
+    private static final String ACTION_1 = "Document with id not found";
 
     @Autowired
     public DocumentService(DocumentRepository documentRepository, FileUploadService fileUploadService, ObjectMapper objectMapper) {
         this.documentRepository = documentRepository;
         this.fileUploadService = fileUploadService;
-        this.objectMapper = objectMapper;
         createLocalStorageDirectory();
     }
 
@@ -56,6 +56,7 @@ public class DocumentService {
 
         // 1. Validation
         validateFile(file);
+
 
         String originalFilename = file.getOriginalFilename();
         String contentTypeString = file.getContentType();
@@ -76,11 +77,11 @@ public class DocumentService {
                 return MediaType.valueOf(contentTypeString);
             } catch (IllegalArgumentException e) {
                 // Log the error, content type is invalid, fallback to default.
-                System.err.println("Invalid content type: " + contentTypeString + ". Falling back to default.");
+                System.out.println("Invalid content type: " + contentTypeString + ". Falling back to default.");
             }
         }
 
-        // If content type is null or invalid, try to determine it from the file extension
+
         String fileExtension = getFileExtension(originalFilename);
         if (fileExtension != null && !fileExtension.isEmpty()) {
             switch (fileExtension.toLowerCase()) {
@@ -91,7 +92,8 @@ public class DocumentService {
                     return MediaType.IMAGE_PNG;
                 case "pdf":
                     return MediaType.APPLICATION_PDF;
-                // Add more cases as needed
+                default:
+                    break;
             }
         }
 
@@ -129,11 +131,14 @@ public class DocumentService {
         documentMinio.setName(originalFilename);
         documentMinio.setMimetype(contentType);
         documentMinio.setExtension(fileExtension);
+
+
         // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
-        details.put("bucket_name", bucketName);
-        details.put("minio_name", minioName);
-        documentMinio.setDetails(objectMapper.writeValueAsString(details));
+        details.put(bucketS, bucketName);
+        details.put(minioS, minioName);
+        documentMinio.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
+
         fileUploadService.uploadMultipartFile(file);
         return documentMinio;
     }
@@ -151,7 +156,7 @@ public class DocumentService {
         // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
         details.put("path", filePath.toString());
-        documentFile.setDetails(objectMapper.writeValueAsString(details));
+        documentFile.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
 
         return documentFile;
     }
@@ -166,9 +171,10 @@ public class DocumentService {
 
         // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
-        details.put("bucket_name", bucketName);
-        details.put("minio_name", minioName);
-        documentMinio.setDetails(objectMapper.writeValueAsString(details));
+        details.put(bucketS, bucketName);
+        details.put(minioS, minioName);
+        documentMinio.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
+
         return documentMinio;
     }
 
@@ -182,10 +188,12 @@ public class DocumentService {
         documentFile.setName(fileName);
         documentFile.setMimetype(mimeType);
         documentFile.setExtension(fileExtension);
+
         // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
         details.put("path", filePath.toString());
-        documentFile.setDetails(objectMapper.writeValueAsString(details));
+        documentFile.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
+
         return documentFile;
     }
 
@@ -211,7 +219,7 @@ public class DocumentService {
     @Transactional
     public Document updateDocument(Long id, MultipartFile file, String bucketName, String minioName) throws FileUploadException, IOException {
         Document document = documentRepository.findById(id)
-                .orElseThrow(() -> new FileNotFoundException("Document with id " + id + " not found"));
+                .orElseThrow(() -> new FileNotFoundException(ACTION_1 + id  ));
 
         String originalFilename = file.getOriginalFilename();
         MediaType contentType = (file.getContentType() == null || file.getContentType().isEmpty()) ? MediaType.APPLICATION_OCTET_STREAM : MediaType.valueOf(file.getContentType());
@@ -229,7 +237,7 @@ public class DocumentService {
     @Transactional
     public Document updateDocumentBase64(Long id, String fileName, String fileBase64, String bucketName, String minioName) throws FileUploadException, IOException {
         Document document = documentRepository.findById(id)
-                .orElseThrow(() -> new FileNotFoundException("Document with id " + id + " not found"));
+                .orElseThrow(() -> new FileNotFoundException(ACTION_1 + id ));
 
         MediaType mimeType;
         try {
@@ -252,14 +260,15 @@ public class DocumentService {
     private Document updateMinioDocument(Long id, MultipartFile file, String bucketName, String minioName, String originalFilename, MediaType contentType, String fileExtension) throws FileUploadException, IOException {
         DocumentMinio documentMinio = documentRepository.findById(id)
                 .map(DocumentMinio.class::cast)
-                .orElseThrow(() -> new FileNotFoundException("DocumentMinio with id " + id + " not found"));
+                .orElseThrow(() -> new FileNotFoundException(ACTION_1 + id ));
 
         fileUploadService.updateMultipartFile(documentMinio.getName(), file);
 
+        // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
-        details.put("bucket_name", bucketName);
-        details.put("minio_name", minioName);
-        documentMinio.setDetails(objectMapper.writeValueAsString(details));
+        details.put(bucketS, bucketName);
+        details.put(minioS, minioName);
+        documentMinio.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
 
         documentMinio.setUpdatedAt(LocalDateTime.now());
         return documentRepository.save(documentMinio);
@@ -268,15 +277,16 @@ public class DocumentService {
     private Document updateLocalDocument(Long id, MultipartFile file, String originalFilename, MediaType contentType, String fileExtension) throws IOException {
         DocumentFile documentFile = documentRepository.findById(id)
                 .map(DocumentFile.class::cast)
-                .orElseThrow(() -> new FileNotFoundException("DocumentFile with id " + id + " not found"));
+                .orElseThrow(() -> new FileNotFoundException(ACTION_1 + id ));
 
         String uniqueFilename = UUID.randomUUID().toString() + "_" + originalFilename;
         Path filePath = Paths.get(LOCAL_STORAGE_DIRECTORY, uniqueFilename);
         Files.copy(file.getInputStream(), filePath);
 
+        // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
         details.put("path", filePath.toString());
-        documentFile.setDetails(objectMapper.writeValueAsString(details));
+        documentFile.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
 
         documentFile.setUpdatedAt(LocalDateTime.now());
         return documentRepository.save(documentFile);
@@ -285,13 +295,15 @@ public class DocumentService {
     private Document updateMinioDocumentBase64(Long id, String fileName, String fileBase64, String bucketName, String minioName, MediaType mimeType, String fileExtension) throws FileUploadException, IOException {
         DocumentMinio documentMinio = documentRepository.findById(id)
                 .map(DocumentMinio.class::cast)
-                .orElseThrow(() -> new FileNotFoundException("DocumentMinio with id " + id + " not found"));
+                .orElseThrow(() -> new FileNotFoundException(ACTION_1 + id ));
 
         fileUploadService.updateBase64File(documentMinio.getName(), fileBase64);
+
+        // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
-        details.put("bucket_name", bucketName);
-        details.put("minio_name", minioName);
-        documentMinio.setDetails(objectMapper.writeValueAsString(details));
+        details.put(bucketS, bucketName);
+        details.put(minioS, minioName);
+        documentMinio.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
 
         documentMinio.setUpdatedAt(LocalDateTime.now());
         return documentRepository.save(documentMinio);
@@ -300,20 +312,21 @@ public class DocumentService {
     private Document updateLocalDocumentBase64(Long id, String fileName, String fileBase64, MediaType mimeType, String fileExtension, Document document) throws IOException {
         DocumentFile documentFile = documentRepository.findById(id)
                 .map(DocumentFile.class::cast)
-                .orElseThrow(() -> new FileNotFoundException("DocumentFile with id " + id + " not found"));
+                .orElseThrow(() -> new FileNotFoundException(ACTION_1 + id ));
 
         String uniqueFilename = UUID.randomUUID().toString() + "_" + fileName;
         Path filePath = Paths.get(LOCAL_STORAGE_DIRECTORY, uniqueFilename);
         byte[] decodedBytes = java.util.Base64.getDecoder().decode(fileBase64);
         Files.write(filePath, decodedBytes);
 
+        // Prepare details as a map
         Map<String, Object> details = new HashMap<>();
         details.put("path", filePath.toString());
-        documentFile.setDetails(objectMapper.writeValueAsString(details));
+        documentFile.setDetails(details); // Set the map directly, the converter will handle the JSON conversion
+
         documentFile.setUpdatedAt(LocalDateTime.now());
         return documentRepository.save(documentFile);
     }
-
 
     private String getFileExtension(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
@@ -322,4 +335,48 @@ public class DocumentService {
         int dotIndex = fileName.lastIndexOf('.');
         return (dotIndex == -1) ? "" : fileName.substring(dotIndex + 1);
     }
+
+    @Transactional
+    public void deleteDocument(Long id) throws IOException {
+        Optional<Document> optionalDocument = documentRepository.findById(id);
+
+        if (optionalDocument.isPresent()) {
+            Document document = optionalDocument.get();
+
+            if (document instanceof DocumentMinio) {
+                // 1. DELETE FROM MINIO
+                DocumentMinio documentMinio = (DocumentMinio) document;
+                try {
+                    Map<String, Object> details = documentMinio.getDetails();
+                    // DEBUGGING: Print the details map
+                    System.out.println("Details Map: " + details);
+
+                    String bucketName = (String) details.get(bucketS); // "bucket_name"
+                    // DEBUGGING: Print the bucket name
+                    System.out.println("Bucket Name: " + bucketName);
+
+                    String objectName = documentMinio.getName();
+                    // DEBUGGING: Print the object name
+                    System.out.println("Object Name: " + objectName);
+
+                    fileUploadService.deleteFile(objectName, bucketName); // Calls FileUploadService
+
+                } catch (Exception e) {
+                    // Handle MinIO deletion errors!  VERY IMPORTANT.
+                    // DEBUGGING: Print the stack trace
+                    e.printStackTrace();
+                    throw new IOException("Failed to delete from MinIO: " + e.getMessage(), e);
+                }
+            } else if (document instanceof DocumentFile) {
+                // ... (local file deletion - not relevant to this error) ...
+            }
+
+            // 3. DELETE FROM DATABASE (ONLY IF 1 and 2 SUCCEED)
+            documentRepository.deleteById(id);
+
+        } else {
+            throw new FileNotFoundException(ACTION_1 + id);
+        }
+    }
+
 }

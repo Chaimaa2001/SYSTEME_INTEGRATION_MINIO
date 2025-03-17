@@ -7,6 +7,7 @@ import lombok.*;
 import org.springframework.http.MediaType;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Getter
@@ -14,22 +15,25 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @ToString
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(discriminatorType = DiscriminatorType.STRING,name="document")
+@DiscriminatorColumn(discriminatorType = DiscriminatorType.STRING, name = "document")
 public abstract class Document {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name="created_at")
+
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
-    @Column(name="updated_at")
+
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
     private String name;
     private MediaType mimetype;
     private String extension;
-    @Column(columnDefinition = "json") // Spécifie que la colonne est de type JSON
+
+    @Column(columnDefinition = "TEXT")
     @Convert(converter = JsonConverter.class)
-    private Object details;
+    private Map<String, Object> details; // Stocke les détails sous forme de JSON
 
     public abstract FileModel getFileModel();
-
-
 }

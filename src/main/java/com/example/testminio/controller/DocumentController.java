@@ -15,7 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
-import java.util.NoSuchElementException;
+
 
 @RestController
 @RequestMapping("/api/documents")
@@ -24,6 +24,7 @@ public class DocumentController {
     private final DocumentService documentService;
     private static final String ACTION_2 = "Fichier téléversé avec succès";
     private static final String ACTION_3 = "Fichier mis à jour avec succès";
+    private static final String ACTION_4=  "Fichier supprimé avec succès";
 
     @Autowired
     public DocumentController(DocumentService documentService) {
@@ -72,7 +73,7 @@ public class DocumentController {
 
     // READ (One)
     @GetMapping("/{id}")
-    public ResponseEntity<?> getDocumentById(@PathVariable Long id) {
+    public ResponseEntity<Document> getDocumentById(@PathVariable Long id) {
         return documentService.getDocumentById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -118,6 +119,18 @@ public class DocumentController {
                     .body(new MessageResponse("Erreur lors de la mise à jour du document : " + e.getMessage()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new MessageResponse(e.getMessage()));
+        }
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<MessageResponse> deleteDocument(@PathVariable Long id) {
+        try {
+            documentService.deleteDocument(id);
+            return ResponseEntity.ok(new MessageResponse(ACTION_4 + " Document with ID " + id));
+        } catch (FileNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new MessageResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("Erreur lors de la suppression du document: " + e.getMessage()));
         }
     }
 }

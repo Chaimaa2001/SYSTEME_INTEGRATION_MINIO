@@ -1,33 +1,33 @@
 package com.example.testminio.converter;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 import java.io.IOException;
+import java.util.Map;
 
 @Converter
-public class JsonConverter implements AttributeConverter<Object, String> {
+public class JsonConverter implements AttributeConverter<Map<String, Object>, String> {
 
     private final static ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String convertToDatabaseColumn(Object attribute) {
+    public String convertToDatabaseColumn(Map<String, Object> attribute) {
         try {
             return objectMapper.writeValueAsString(attribute);
-        } catch (IOException e) {
-            // Log the error or throw a runtime exception
-            throw new RuntimeException("Failed to convert object to JSON string", e);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to convert map to JSON string", e);
         }
     }
 
     @Override
-    public Object convertToEntityAttribute(String dbData) {
+    public Map<String, Object> convertToEntityAttribute(String dbData) {
         try {
-            return objectMapper.readValue(dbData, Object.class);
+            return objectMapper.readValue(dbData, Map.class);
         } catch (IOException e) {
-            // Log the error or throw a runtime exception
-            throw new RuntimeException("Failed to convert JSON string to object", e);
+            throw new RuntimeException("Failed to convert JSON string to map", e);
         }
     }
 }

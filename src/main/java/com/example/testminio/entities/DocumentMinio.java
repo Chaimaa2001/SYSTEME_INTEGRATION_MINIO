@@ -7,9 +7,10 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
+import java.util.Map;
 
 @Entity
 @DiscriminatorValue("DocumentMinio")
@@ -22,15 +23,15 @@ public class DocumentMinio extends Document {
     public FileModel getFileModel() {
         try {
             ObjectMapper mapper = new ObjectMapper();
-            JsonNode detailsNode = mapper.readTree(mapper.writeValueAsString(super.getDetails()));
-            String bucketName = detailsNode.get("bucket_name").asText();
-            String minioName = detailsNode.get("minio_name").asText();
+            String detailsJson = mapper.writeValueAsString(super.getDetails());
+            Map<String, Object> detailsMap = mapper.readValue(detailsJson, Map.class);
+            String bucketName = (String) detailsMap.get("bucket_name");
+            String minioName = (String) detailsMap.get("minio_name");
 
             return new FileModelMinIO(super.getName(), super.getMimetype(), super.getExtension());
         } catch (IOException e) {
-            // Handle exception appropriately (e.g., log, throw a custom exception)
             e.printStackTrace();
-            return null; // Or throw an exception
+            return null; // Ou throw une exception
         }
     }
 }

@@ -7,9 +7,10 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
+import java.util.Map;
 
 @Entity
 @DiscriminatorValue("DocumentFile")
@@ -22,13 +23,13 @@ public class DocumentFile extends Document {
     public FileModel getFileModel() {
         try {
             ObjectMapper mapper = new ObjectMapper();
-            JsonNode detailsNode = mapper.readTree(mapper.writeValueAsString(super.getDetails()));
-            String path = detailsNode.get("path").asText();
+            String detailsJson = mapper.writeValueAsString(super.getDetails());
+            Map<String, Object> detailsMap = mapper.readValue(detailsJson, Map.class);
+            String path = (String) detailsMap.get("path");
             return new FileModelAncienneVersion(super.getName(), path, super.getMimetype());
         } catch (IOException e) {
-            // Handle exception appropriately (e.g., log, throw a custom exception)
             e.printStackTrace();
-            return null; // Or throw an exception
+            return null; // Ou throw une exception
         }
     }
 }
